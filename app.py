@@ -10,6 +10,8 @@ from data_loader import load_real_dataset
 
 app = Flask(__name__)
 TARIFF = 7.0  # illustrative INR/kWh; replace with user's actual tariff
+INTERVALS_PER_DAY = 144  # the dataset is sampled every 10 minutes (24 * 6)
+DAYS_PER_MONTH = 30
 
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
@@ -213,12 +215,14 @@ def predict():
         "Other appliances": round(other_wh / 1000, 3)
     }
 
-    monthly_kwh = predicted_kwh * 24 * 30
+    # predicted_kwh is energy per 10-minute interval, so scale by the number
+    # of intervals in a day (144), not hours in a day (24).
+    monthly_kwh = predicted_kwh * INTERVALS_PER_DAY * DAYS_PER_MONTH
     monthly_cost = monthly_kwh * TARIFF
 
     # A transparent simulation based on the measured lighting input and the
     # user-chosen reduction percentage (default 10%, adjustable 1-50%).
-    saving_kwh = (lights_wh / 1000) * (cut_pct / 100) * 30
+    saving_kwh = (lights_wh / 1000) * (cut_pct / 100) * INTERVALS_PER_DAY * DAYS_PER_MONTH
     saving_rupees = saving_kwh * TARIFF
 
     if unusual:
@@ -273,3 +277,6 @@ def predict():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+    
+
