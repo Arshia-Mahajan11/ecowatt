@@ -1,304 +1,663 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EcoWatt • Energy Intelligence</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EcoWatt — AI energy dashboard</title>
+  <meta name="theme-color" content="#070d14">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script>
+    // Apply the saved theme before first paint (dark by default).
+    try {
+      var t = localStorage.getItem("ecowatt-theme");
+      if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
-<div class="ambient ambient-one"></div>
-<div class="ambient ambient-two"></div>
 
-<main class="shell">
+<!-- Icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></symbol>
+    <symbol id="i-bars" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 16l.7 1.8L21.5 18.5l-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z"/></symbol>
+    <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10z"/><path d="M2 21c0-3 1.9-5.4 5-6"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="brand">
-      <div class="brand-mark">E</div>
-      <div><b>EcoWatt</b><span>ENERGY AI</span></div>
+      <span class="brand-mark"><svg class="icon"><use href="#i-bolt"/></svg></span>
+      <span>EcoWatt</span>
     </div>
-    <nav>
-      <a class="active" href="#overview">◉ Overview</a>
-      <a href="#analytics">⌁ Analytics</a>
-      <a href="#insights">✦ AI Insights</a>
-      <a href="#model">▣ Model</a>
+
+    <nav class="nav" role="tablist" aria-label="Sections" id="nav">
+      <button role="tab" data-view="overview" aria-selected="true"><svg class="icon"><use href="#i-home"/></svg>Overview</button>
+      <button role="tab" data-view="analytics" aria-selected="false"><svg class="icon"><use href="#i-bars"/></svg>Analytics</button>
+      <button role="tab" data-view="insights" aria-selected="false"><svg class="icon"><use href="#i-spark"/></svg>AI Insights</button>
+      <button role="tab" data-view="model" aria-selected="false"><svg class="icon"><use href="#i-cpu"/></svg>Model</button>
     </nav>
-    <div class="side-card">
-      <span class="live-dot"></span>
-      <div><b>AI engine online</b><small>Real-data model ready</small></div>
+
+    <div class="sidebar-foot">
+      <div class="engine">
+        <span class="dot"></span>
+        <div><strong>AI engine online</strong><span>Real-data model ready</span></div>
+      </div>
+      <div class="tagline">
+        <span>Smarter energy<br>for a greener tomorrow</span>
+        <svg class="icon"><use href="#i-leaf"/></svg>
+      </div>
     </div>
-    <div class="sidebar-foot">Prototype V3<br><span>UCI research dataset</span></div>
   </aside>
 
-  <section class="main">
+  <div class="main">
+
     <header class="topbar">
-      <div>
-        <div class="eyebrow">SMART ENERGY COMMAND CENTER</div>
-        <h1>Energy Intelligence <span>✦</span></h1>
-        <p>Turn energy data into predictions, alerts and actionable savings.</p>
-      </div>
-      <div class="model-pill"><i></i> Random Forest + Isolation Forest</div>
+      <span class="pill">Trained on {{ "{:,}".format(rows) }} real readings</span>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch theme">
+        <svg class="icon moon"><use href="#i-moon"/></svg>
+        <svg class="icon sun"><use href="#i-sun"/></svg>
+      </button>
     </header>
 
-    <section class="card pitch-card" id="pitch">
-      <div class="pitch-grid">
+    <div class="content">
+
+      <div class="welcome">
         <div>
-          <span class="section-kicker">PROBLEM</span>
-          <p>Indian households and small businesses rarely know <em>where</em> their electricity goes or <em>when</em> demand quietly turns unusual — bills arrive as a surprise, not a warning.</p>
+          <h1>Welcome to <em>EcoWatt</em></h1>
+          <p>AI-powered energy optimization for a smarter, greener home.</p>
         </div>
-        <div>
-          <span class="section-kicker">OUR APPROACH</span>
-          <p>EcoWatt trains real machine-learning models — a Random Forest regressor and an Isolation Forest anomaly detector — on 19,735 genuine appliance-energy measurements to forecast usage and flag abnormal patterns before they show up on the bill.</p>
-        </div>
-        <div>
-          <span class="section-kicker">IMPACT</span>
-          <p>Early anomaly warnings + a transparent savings simulator help nudge everyday behaviour change — supporting affordable, sustainable energy use (aligned with SDG&nbsp;7 and SDG&nbsp;12).</p>
+        <div class="date-chip">
+          <svg class="icon"><use href="#i-cal"/></svg>
+          <div>Today<small id="today">—</small></div>
         </div>
       </div>
-    </section>
 
-    <section class="hero-grid" id="overview">
-      <div class="hero-card">
-        <div class="hero-copy">
-          <span class="chip">REAL-DATA AI</span>
-          <h2>Know your energy<br><em>before it costs you.</em></h2>
-          <p>EcoWatt learns patterns from real appliance-energy measurements and flags unusual demand.</p>
-          <button id="runBtn" onclick="runEcoWatt()">Run EcoWatt AI <span>→</span></button>
+      <div id="error" class="error" role="alert" hidden></div>
+
+      <!-- ================= OVERVIEW ================= -->
+      <section id="view-overview" class="view" style="display:grid;gap:18px">
+
+        <div class="pitch">
+          <div>
+            <h3>Problem</h3>
+            <p>People only see where their electricity goes when the bill arrives.</p>
+          </div>
+          <div>
+            <h3>Approach</h3>
+            <p>A Random Forest trained on {{ "{:,}".format(rows) }} real building readings forecasts use and flags unusual load.</p>
+          </div>
+          <div>
+            <h3>Impact</h3>
+            <p>Supports SDG 7 (affordable, clean energy) and SDG 12 (responsible consumption).</p>
+          </div>
         </div>
-        <div class="hero-orbit">
-          <div class="orbit-ring ring-a"></div>
-          <div class="orbit-ring ring-b"></div>
-          <div class="energy-core"><span>⚡</span><small>AI</small></div>
+
+        <details class="card scenario">
+          <summary>
+            <div class="card-head" style="margin:0">
+              <h2><svg class="icon"><use href="#i-play"/></svg>Scenario</h2>
+            </div>
+            <span style="display:flex;align-items:center;gap:8px" class="hint">Set conditions, then run the model <svg class="icon chev"><use href="#i-chev"/></svg></span>
+          </summary>
+
+          {% macro num(name, label, step, value) -%}
+          <div class="field">
+            <label for="f-{{ name }}">{{ label }}</label>
+            <input id="f-{{ name }}" name="{{ name }}" type="number" step="{{ step }}" value="{{ value }}" inputmode="decimal">
+          </div>
+          {%- endmacro %}
+
+          <form id="scenario" autocomplete="off">
+            <div class="fields">
+              <div class="field">
+                <label for="f-hour">Hour of day</label>
+                <select id="f-hour" name="hour">
+                  {% for h in range(24) %}
+                  <option value="{{ h }}" {% if h == defaults.hour %}selected{% endif %}>{{ "%02d:00"|format(h) }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="f-dayofweek">Day of week</label>
+                <select id="f-dayofweek" name="dayofweek">
+                  {% for d in weekly_labels %}
+                  <option value="{{ loop.index0 }}" {% if loop.index0 == defaults.dayofweek %}selected{% endif %}>{{ d }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="f-month">Month</label>
+                <select id="f-month" name="month">
+                  {% for m in ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] %}
+                  <option value="{{ loop.index }}" {% if loop.index == defaults.month %}selected{% endif %}>{{ m }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              {{ num("lights", "Lighting load (Wh)", "1", defaults.lights) }}
+              {{ num("t1", "Kitchen temp (°C)", "0.1", defaults.t1) }}
+              {{ num("rh1", "Kitchen humidity (%)", "0.1", defaults.rh1) }}
+              {{ num("t2", "Living temp (°C)", "0.1", defaults.t2) }}
+              {{ num("rh2", "Living humidity (%)", "0.1", defaults.rh2) }}
+              {{ num("tout", "Outdoor temp (°C)", "0.1", defaults.tout) }}
+              {{ num("rhout", "Outdoor humidity (%)", "0.1", defaults.rhout) }}
+              {{ num("wind", "Wind speed (m/s)", "0.1", defaults.wind) }}
+              {{ num("visibility", "Visibility (km)", "0.1", defaults.visibility) }}
+            </div>
+            <div class="form-actions">
+              <button class="btn" id="run" type="submit"><svg class="icon"><use href="#i-play"/></svg>Run prediction</button>
+              <span class="hint">Results update every card and chart below.</span>
+            </div>
+          </form>
+        </details>
+
+        <div class="grid-kpi">
+          <div class="card kpi">
+            <span class="chip green"><svg class="icon"><use href="#i-bolt"/></svg></span>
+            <div class="kpi-body">
+              <div class="kpi-label">Predicted use</div>
+              <div class="kpi-value"><span id="k-pred">—</span> <small>kWh</small></div>
+              <div class="kpi-sub">per 10 minutes</div>
+            </div>
+          </div>
+          <div class="card kpi">
+            <span class="chip blue"><svg class="icon"><use href="#i-trend"/></svg></span>
+            <div class="kpi-body">
+              <div class="kpi-label">vs. typical</div>
+              <div class="kpi-value" id="k-base">—</div>
+              <div class="kpi-sub" id="k-base-sub">real-data comparison</div>
+            </div>
+          </div>
+          <div class="card kpi">
+            <span class="chip purple">₹</span>
+            <div class="kpi-body">
+              <div class="kpi-label">Monthly estimate</div>
+              <div class="kpi-value" id="k-cost">—</div>
+              <div class="kpi-sub" id="k-cost-sub">illustrative tariff</div>
+            </div>
+          </div>
+          <div class="card kpi">
+            <span class="chip green" id="k-alert-chip"><svg class="icon"><use href="#i-bell"/></svg></span>
+            <div class="kpi-body">
+              <div class="kpi-label">AI alert</div>
+              <div class="kpi-value" id="k-alert">—</div>
+              <div class="kpi-sub" id="k-alert-sub">anomaly check</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="quick-card">
-        <div class="quick-head"><span>MODEL SNAPSHOT</span><b>LIVE</b></div>
-        <div class="quick-number" id="quickStatus">—</div>
-        <div class="quick-label">current intelligence status</div>
-        <div class="mini-progress"><i id="statusBar"></i></div>
-        <div class="quick-row"><span>Test R²</span><strong id="quickR2">{{ r2 }}</strong></div>
-        <div class="quick-row"><span>Observations</span><strong>{{ rows|default(0) }}</strong></div>
-      </div>
-    </section>
 
-    <section class="input-panel card">
-      <div class="section-title">
-        <div><span class="section-kicker">CONTROL PANEL</span><h3>Energy & environment</h3></div>
-        <span class="hint">Adjust inputs, then run the model</span>
-      </div>
-      <div class="input-grid">
-        <label><span>Hour</span><input id="hour" type="number" min="0" max="23" value="{{ defaults.hour }}"></label>
-        <label><span>Day <small>(0=Mon)</small></span><input id="dayofweek" type="number" min="0" max="6" value="{{ defaults.dayofweek }}"></label>
-        <label><span>Month</span><input id="month" type="number" min="1" max="12" value="{{ defaults.month }}"></label>
-        <label><span>Kitchen °C</span><input id="t1" type="number" step="0.1" value="{{ defaults.t1 }}"></label>
-        <label><span>Kitchen RH %</span><input id="rh1" type="number" step="0.1" value="{{ defaults.rh1 }}"></label>
-        <label><span>Living °C</span><input id="t2" type="number" step="0.1" value="{{ defaults.t2 }}"></label>
-        <label><span>Living RH %</span><input id="rh2" type="number" step="0.1" value="{{ defaults.rh2 }}"></label>
-        <label><span>Outdoor °C</span><input id="tout" type="number" step="0.1" value="{{ defaults.tout }}"></label>
-        <label><span>Outdoor RH %</span><input id="rhout" type="number" step="0.1" value="{{ defaults.rhout }}"></label>
-        <label><span>Wind m/s</span><input id="wind" type="number" step="0.1" value="{{ defaults.wind }}"></label>
-        <label><span>Visibility km</span><input id="visibility" type="number" step="0.1" value="{{ defaults.visibility }}"></label>
-        <label><span>Lighting Wh</span><input id="lights" type="number" step="0.1" value="{{ defaults.lights }}"></label>
-      </div>
-      <p id="error"></p>
-    </section>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h2><svg class="icon"><use href="#i-bars"/></svg>24-hour energy profile</h2>
+              <span class="hint">Predicted consumption, kWh per 10 min</span>
+            </div>
+            <div class="chart-box"><canvas id="chart-forecast" aria-label="24-hour predicted energy profile" role="img"></canvas></div>
+          </div>
 
-    <section class="kpis">
-      <div class="kpi card"><div class="kpi-icon purple">⚡</div><span>Predicted use</span><strong id="predicted">—</strong><small>kWh / 10 min</small></div>
-      <div class="kpi card"><div class="kpi-icon amber">◒</div><span>vs. baseline</span><strong id="above">—</strong><small>real-data comparison</small></div>
-      <div class="kpi card"><div class="kpi-icon green">₹</div><span>Monthly estimate</span><strong id="cost">—</strong><small>illustrative tariff</small></div>
-      <div class="kpi card"><div class="kpi-icon red">!</div><span>AI alert</span><strong id="anomaly">—</strong><small id="status">waiting for analysis</small></div>
-    </section>
-
-    <section class="dashboard-grid" id="analytics">
-      <div class="card chart-card large">
-        <div class="card-head">
-          <div><span class="section-kicker">FORECAST</span><h3>24-hour energy profile</h3></div>
-          <span class="legend-dot"><i></i> Predicted consumption</span>
+          <div class="card">
+            <div class="card-head">
+              <h2><svg class="icon"><use href="#i-bolt"/></svg>Where energy goes</h2>
+            </div>
+            <div class="chart-box donut"><canvas id="chart-donut" aria-label="Energy breakdown" role="img"></canvas></div>
+            <ul class="legend" id="legend"></ul>
+          </div>
         </div>
-        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
-      </div>
-      <div class="card chart-card">
-        <div class="card-head">
-          <div><span class="section-kicker">BREAKDOWN</span><h3>Where energy goes</h3></div>
+
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-head"><h2><svg class="icon"><use href="#i-spark"/></svg>What EcoWatt sees</h2></div>
+            <p class="insight-text" id="insight">—</p>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2><svg class="icon"><use href="#i-trend"/></svg>Top contributor</h2></div>
+            <div class="big-name" id="top-name">—</div>
+            <div class="hint" id="top-sub">largest estimated contributor</div>
+            <div class="bar"><span id="top-bar"></span></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2><svg class="icon"><use href="#i-leaf"/></svg>Savings simulator</h2></div>
+            <div class="hint">Cut lighting energy by</div>
+            <div class="slider-row">
+              <input type="range" id="cut" min="1" max="50" value="10" aria-label="Lighting reduction percent">
+              <output id="cut-out" for="cut">10%</output>
+            </div>
+            <div class="saving"><span id="save-rs">—</span> <small>per month</small></div>
+            <div class="hint" id="save-kwh">—</div>
+          </div>
         </div>
-        <div class="donut-wrap"><canvas id="applianceChart"></canvas><div class="donut-center"><b id="donutValue">—</b><span>kWh</span></div></div>
-        <div id="breakdownLegend" class="breakdown-list"></div>
-      </div>
-    </section>
 
-    <section class="insight-grid" id="insights">
-      <div class="card insight-card">
-        <div class="insight-top"><span class="spark">✦</span><div><span class="section-kicker">AI INSIGHT</span><h3>What EcoWatt sees</h3></div></div>
-        <p id="recommendation">Run the model to generate a personalized energy insight.</p>
-        <div class="insight-tag">AI-generated recommendation</div>
-      </div>
-      <div class="card contributor">
-        <span class="section-kicker">TOP CONTRIBUTOR</span>
-        <div class="contributor-main"><div class="contributor-icon">⌁</div><div><strong id="major">—</strong><span>largest estimated contributor</span></div></div>
-        <div class="meter"><i id="contributorBar"></i></div>
-      </div>
-      <div class="card savings">
-        <span class="section-kicker">SAVINGS SIMULATOR</span>
-        <h3>Small change. Real impact.</h3>
-        <p>Reduce lighting energy by <b id="cutLabel">10</b>% in this scenario.</p>
-        <input id="cutSlider" type="range" min="1" max="50" value="10" oninput="onSliderChange()">
-        <div class="saving-values"><div><strong id="savingKwh">—</strong><span>kWh / month</span></div><div><strong id="savingRupees">—</strong><span>potential saving</span></div></div>
-      </div>
-    </section>
-
-    <section class="dashboard-grid" id="patterns">
-      <div class="card chart-card">
-        <div class="card-head">
-          <div><span class="section-kicker">WEEKLY PATTERN</span><h3>Real-data usage by day</h3></div>
+        <div class="banner">
+          <svg class="icon"><use href="#i-leaf"/></svg>
+          <div><strong>Small changes. Big impact.</strong><span>Together we can build a more sustainable future.</span></div>
         </div>
-        <div class="chart-wrap small"><canvas id="weeklyChart"></canvas></div>
-      </div>
-      <div class="card chart-card">
-        <div class="card-head">
-          <div><span class="section-kicker">EXPLAINABILITY</span><h3>What drives the prediction</h3></div>
+      </section>
+
+      <!-- ================= ANALYTICS ================= -->
+      <section id="view-analytics" class="view" hidden style="gap:18px">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h2><svg class="icon"><use href="#i-bars"/></svg>Weekly usage pattern</h2>
+              <span class="hint">Average kWh per 10 min, real data</span>
+            </div>
+            <div class="chart-box"><canvas id="chart-weekly" aria-label="Average energy use by day of week" role="img"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h2><svg class="icon"><use href="#i-trend"/></svg>Predicted vs. typical</h2>
+            </div>
+            <div class="chart-box"><canvas id="chart-compare" aria-label="Predicted use compared with typical use for this hour" role="img"></canvas></div>
+            <p class="hint" style="margin-top:10px" id="compare-note">—</p>
+          </div>
         </div>
-        <div class="chart-wrap small"><canvas id="importanceChart"></canvas></div>
-      </div>
-    </section>
+      </section>
 
-    <section class="card model-card" id="model">
-      <div class="model-header">
-        <div><span class="section-kicker">MODEL TRANSPARENCY</span><h3>How reliable is the intelligence?</h3></div>
-        <span class="data-badge">● REAL DATA</span>
-      </div>
-      <div class="model-stats">
-        <div><span>Test R²</span><strong id="r2">{{ r2 }}</strong><small>higher is better</small></div>
-        <div><span>Test MAE</span><strong id="mae">{{ mae }} Wh</strong><small>lower is better</small></div>
-        <div><span>Training observations</span><strong>{{ rows|default(0) }}</strong><small>UCI measurements</small></div>
-        <div><span>Algorithms</span><strong>2</strong><small>prediction + anomaly</small></div>
-      </div>
-      <div class="method-row">
-        <span>Random Forest</span><i></i><span>Prediction</span>
-        <span>Isolation Forest</span><i></i><span>Anomaly detection</span>
-      </div>
-    </section>
+      <!-- ================= INSIGHTS ================= -->
+      <section id="view-insights" class="view" hidden style="gap:18px">
+        <div class="grid-3">
+          <div class="card">
+            <div class="card-head"><h2><svg class="icon"><use href="#i-trend"/></svg>Baseline check</h2></div>
+            <div class="kpi-value" id="ins-base">—</div>
+            <p class="hint" style="margin-top:6px">Predicted use compared with the dataset's typical use for the selected hour. Above +20% is flagged as elevated, above +50% as unusual.</p>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2><svg class="icon"><use href="#i-bell"/></svg>Anomaly check</h2></div>
+            <div class="kpi-value" id="ins-anom">—</div>
+            <p class="hint" style="margin-top:6px">An Isolation Forest trained on real observations scores whether this scenario looks like normal building behaviour.</p>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2><svg class="icon"><use href="#i-leaf"/></svg>Savings projection</h2></div>
+            <div class="kpi-value" id="ins-save">—</div>
+            <p class="hint" style="margin-top:6px" id="ins-save-note">—</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2><svg class="icon"><use href="#i-bulb"/></svg>Recommendation</h2></div>
+          <p class="insight-title" id="ins-status">—</p>
+          <p class="insight-text" id="ins-text">—</p>
+        </div>
+      </section>
 
-    <footer>
-      <b>EcoWatt V3</b> • UCI Appliances Energy Prediction dataset • Research prototype
-      <span>Not live household data • Tariff shown at illustrative ₹7/kWh</span>
-    </footer>
-  </section>
-</main>
+      <!-- ================= MODEL ================= -->
+      <section id="view-model" class="view" hidden style="gap:18px">
+        <div class="grid-kpi">
+          <div class="card metric"><div class="kpi-label">R² on held-out data</div><div class="kpi-value">{{ r2 }}</div></div>
+          <div class="card metric"><div class="kpi-label">Mean absolute error</div><div class="kpi-value">{{ mae }} <small>Wh</small></div></div>
+          <div class="card metric"><div class="kpi-label">Real observations</div><div class="kpi-value">{{ "{:,}".format(rows) }}</div></div>
+          <div class="card metric"><div class="kpi-label">Illustrative tariff</div><div class="kpi-value">₹{{ tariff }} <small>/ kWh</small></div></div>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h2><svg class="icon"><use href="#i-cpu"/></svg>What drives the prediction</h2>
+              <span class="hint">Random Forest feature importance</span>
+            </div>
+            <div class="chart-box tall"><canvas id="chart-features" aria-label="Feature importance of the trained model" role="img"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2><svg class="icon"><use href="#i-bulb"/></svg>About the data</h2></div>
+            <ul class="notes">
+              <li>UCI Appliances Energy Prediction dataset: real public research data at 10-minute intervals from a monitored low-energy building.</li>
+              <li>It is not a live household feed and not Indian household data.</li>
+              <li>The ₹{{ tariff }}/kWh tariff is illustrative. Replace it with a real slab rate for personal estimates.</li>
+              <li>The dataset has no AC column, so AC load is not made up. Only measured lighting is separated out; the rest is labelled Other appliances.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
 
 <script>
-let trendChart, applianceChart, weeklyChart, importanceChart;
-const fields = ["hour","dayofweek","month","t1","rh1","t2","rh2","tout","rhout","wind","visibility","lights"];
-const $ = id => document.getElementById(id);
-const weeklyLabels = {{ weekly_labels|tojson }};
-const weeklyValues = {{ weekly_values|tojson }};
-const featureImportance = {{ feature_importance|tojson }};
+(function () {
+  "use strict";
 
-function payload() {
-  const p = {};
-  fields.forEach(id => p[id] = Number($(id).value));
-  p.cut_pct = Number($("cutSlider").value);
-  return p;
-}
+  var DEFAULTS      = {{ defaults|tojson }};
+  var FEATURES      = {{ feature_importance|tojson }};
+  var WEEK_LABELS   = {{ weekly_labels|tojson }};
+  var WEEK_VALUES   = {{ weekly_values|tojson }};
 
-function onSliderChange() {
-  $("cutLabel").textContent = $("cutSlider").value;
-  runEcoWatt();
-}
+  var $  = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  var css = function (n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); };
+  var isShown = function (el) { return !!el && el.offsetParent !== null; };
 
-function renderStaticCharts() {
-  weeklyChart = new Chart($("weeklyChart"), {
-    type: "bar",
-    data: { labels: weeklyLabels, datasets: [{ label: "Avg appliance kWh", data: weeklyValues, borderRadius: 8 }] },
-    options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{display:false}}, y:{grid:{color:"rgba(20,30,70,.07)"},beginAtZero:true} } }
+  var charts = {};
+  var last = null;
+  var currentView = "overview";
+  var hasChart = typeof Chart !== "undefined";
+
+  /* ---------- Date chip ---------- */
+  $("#today").textContent = new Date().toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
+
+  /* ---------- Theme ---------- */
+  function setTheme(t) {
+    document.documentElement.dataset.theme = t;
+    try { localStorage.setItem("ecowatt-theme", t); } catch (e) {}
+    $("#theme-toggle").setAttribute("aria-label", t === "dark" ? "Switch to light theme" : "Switch to dark theme");
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", t === "dark" ? "#070d14" : "#f2f6f9");
+    drawCharts();
+  }
+  $("#theme-toggle").addEventListener("click", function () {
+    setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
   });
-  importanceChart = new Chart($("importanceChart"), {
-    type: "bar",
-    data: {
-      labels: featureImportance.map(f => f.feature),
-      datasets: [{ label: "Importance", data: featureImportance.map(f => f.importance), borderRadius: 8 }]
-    },
-    options: { indexAxis:"y", responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-      scales:{ x:{grid:{color:"rgba(20,30,70,.07)"},beginAtZero:true}, y:{grid:{display:false}} } }
-  });
-}
+  $("#theme-toggle").setAttribute("aria-label",
+    document.documentElement.dataset.theme === "dark" ? "Switch to light theme" : "Switch to dark theme");
 
-function setStatus(d) {
-  $("quickStatus").textContent = d.status;
-  $("status").textContent = d.status.toLowerCase();
-  $("statusBar").style.width = d.status === "Normal" ? "38%" : d.status === "Elevated" ? "67%" : "92%";
-}
-
-async function runEcoWatt() {
-  const btn = $("runBtn");
-  $("error").textContent = "";
-  btn.disabled = true;
-  btn.innerHTML = 'Analyzing real-data model <span class="spinner"></span>';
-  try {
-    const r = await fetch("/predict", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(payload())
+  /* ---------- Tabs ---------- */
+  function showView(name) {
+    currentView = name;
+    $$(".view").forEach(function (v) {
+      var on = v.id === "view-" + name;
+      v.hidden = !on;
+      v.style.display = on ? "grid" : "";
     });
-    if (!r.ok) throw new Error("Prediction failed");
-    const d = await r.json();
+    $$("#nav button").forEach(function (b) {
+      b.setAttribute("aria-selected", b.dataset.view === name ? "true" : "false");
+    });
+    drawCharts();
+  }
+  $$("#nav button").forEach(function (b) {
+    b.addEventListener("click", function () { showView(b.dataset.view); });
+  });
 
-    $("predicted").textContent = d.predicted;
-    $("above").textContent = (d.above_baseline >= 0 ? "+" : "") + d.above_baseline + "%";
-    $("cost").textContent = "₹" + d.monthly_cost.toLocaleString("en-IN");
-    $("anomaly").textContent = d.anomaly === "Unusual" ? "⚠ Unusual" : "✓ Normal";
-    $("recommendation").textContent = d.recommendation;
-    $("major").textContent = d.major_contributor;
-    $("contributorBar").style.width = "82%";
-    $("savingKwh").textContent = d.saving_kwh;
-    $("savingRupees").textContent = "₹" + d.saving_rupees.toLocaleString("en-IN");
-    $("r2").textContent = d.r2;
-    $("mae").textContent = d.mae + " Wh";
-    $("quickR2").textContent = d.r2;
+  /* ---------- Helpers ---------- */
+  function statusClass(s) { return s === "Normal" ? "ok" : (s === "Elevated" ? "warn" : "bad"); }
+  function chipClass(s)   { return s === "Normal" ? "green" : (s === "Elevated" ? "amber" : "red"); }
+  function fmtINR(n) { return "₹" + Number(n).toLocaleString("en-IN"); }
+  function hourLabel(h) { return (h < 10 ? "0" : "") + h + ":00"; }
+  function selected(id) { return parseInt($(id).value, 10) || 0; }
 
-    const vals = Object.values(d.breakdown);
-    const total = vals.reduce((a,b)=>a+b,0);
-    $("donutValue").textContent = total.toFixed(2);
-    $("breakdownLegend").innerHTML = Object.entries(d.breakdown).map(([k,v]) =>
-      `<div><span><i></i>${k}</span><b>${v} kWh</b></div>`
-    ).join("");
+  function setChartDefaults() {
+    if (!hasChart) return;
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+    Chart.defaults.font.size = 11;
+    Chart.defaults.color = css("--muted");
+  }
 
-    setStatus(d);
+  function baseScales(opts) {
+    opts = opts || {};
+    var grid = css("--line");
+    return {
+      x: { grid: { color: grid, drawTicks: false }, border: { display: false },
+           ticks: Object.assign({ color: css("--muted"), padding: 8 }, opts.xTicks || {}) },
+      y: { beginAtZero: true, grid: { color: grid, drawTicks: false }, border: { display: false },
+           ticks: { color: css("--muted"), padding: 8 } }
+    };
+  }
 
-    if (trendChart) trendChart.destroy();
-    trendChart = new Chart($("trendChart"), {
-      type:"line",
-      data:{labels:d.trend_hours.map(h=>String(h).padStart(2,"0")+":00"),datasets:[{
-        label:"Predicted consumption", data:d.trend, borderWidth:3, pointRadius:0,
-        pointHoverRadius:5, tension:.38, fill:true
-      }]},
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{mode:"index",intersect:false}},
-        scales:{
-          x:{grid:{display:false},ticks:{maxTicksLimit:8}},
-          y:{grid:{color:"rgba(20,30,70,.07)"},beginAtZero:true}
-        }
+  function tooltipStyle() {
+    return {
+      backgroundColor: css("--card-2"), titleColor: css("--text"), bodyColor: css("--text"),
+      borderColor: css("--line"), borderWidth: 1, padding: 10, displayColors: false
+    };
+  }
+
+  function kill(k) { if (charts[k]) { charts[k].destroy(); delete charts[k]; } }
+
+  /* ---------- Charts ---------- */
+  function drawForecast(d) {
+    kill("forecast");
+    var el = $("#chart-forecast");
+    if (!isShown(el)) return;
+    var ctx = el.getContext("2d");
+    var rgb = css("--accent-rgb");
+    var grad = ctx.createLinearGradient(0, 0, 0, el.parentNode.clientHeight || 260);
+    grad.addColorStop(0, "rgba(" + rgb + ", 0.32)");
+    grad.addColorStop(1, "rgba(" + rgb + ", 0)");
+    var hour = selected("#f-hour");
+    var labels = d.trend_hours.map(hourLabel);
+
+    charts.forecast = new Chart(ctx, {
+      type: "line",
+      data: { labels: labels, datasets: [{
+        label: "Predicted consumption", data: d.trend,
+        borderColor: css("--accent"), backgroundColor: grad, fill: true,
+        borderWidth: 2, tension: 0.35,
+        pointRadius: d.trend.map(function (_, i) { return i === hour ? 5 : 0; }),
+        pointBackgroundColor: css("--accent"), pointBorderColor: css("--card"), pointBorderWidth: 2,
+        pointHoverRadius: 5
+      }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: false },
+          tooltip: Object.assign(tooltipStyle(), { callbacks: { label: function (c) { return c.parsed.y.toFixed(3) + " kWh"; } } }) },
+        scales: baseScales({ xTicks: { autoSkip: false, maxRotation: 0,
+          callback: function (v, i) { return i % 3 === 0 ? labels[i] : ""; } } })
       }
     });
-
-    if (applianceChart) applianceChart.destroy();
-    applianceChart = new Chart($("applianceChart"), {
-      type:"doughnut",
-      data:{labels:Object.keys(d.breakdown),datasets:[{
-        data:Object.values(d.breakdown), borderWidth:0, hoverOffset:6
-      }]},
-      options:{responsive:true,cutout:"72%",plugins:{legend:{display:false}}}
-    });
-  } catch(e) {
-    $("error").textContent = "Could not run the model. If this is the first run, allow the real dataset to download.";
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = 'Run EcoWatt AI <span>→</span>';
   }
-}
-renderStaticCharts();
-window.addEventListener("load", runEcoWatt);
+
+  function drawDonut(d) {
+    kill("donut");
+    var el = $("#chart-donut");
+    if (!isShown(el)) return;
+    var names = Object.keys(d.breakdown);
+    var vals = names.map(function (n) { return d.breakdown[n]; });
+    var total = vals.reduce(function (a, b) { return a + b; }, 0);
+    var palette = [css("--amber"), css("--blue"), css("--purple"), css("--accent")];
+    var family = getComputedStyle(document.body).fontFamily;
+
+    var center = { id: "center", afterDraw: function (chart) {
+      var a = chart.chartArea, x = (a.left + a.right) / 2, y = (a.top + a.bottom) / 2, c = chart.ctx;
+      c.save(); c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillStyle = css("--text"); c.font = "700 22px " + family;
+      c.fillText(total.toFixed(3), x, y - 8);
+      c.fillStyle = css("--muted"); c.font = "500 11px " + family;
+      c.fillText("kWh / 10 min", x, y + 12);
+      c.restore();
+    } };
+
+    charts.donut = new Chart(el.getContext("2d"), {
+      type: "doughnut",
+      data: { labels: names, datasets: [{ data: vals, backgroundColor: palette.slice(0, names.length),
+        borderColor: css("--card"), borderWidth: 3, hoverOffset: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: "72%",
+        plugins: { legend: { display: false },
+          tooltip: Object.assign(tooltipStyle(), { callbacks: { label: function (c) { return c.label + ": " + c.parsed.toFixed(3) + " kWh"; } } }) } },
+      plugins: [center]
+    });
+
+    $("#legend").innerHTML = names.map(function (n, i) {
+      var pct = total ? Math.round(vals[i] / total * 100) : 0;
+      return '<li><i style="background:' + palette[i] + '"></i><span class="name">' + n +
+             '</span><span class="val">' + vals[i].toFixed(3) + ' kWh</span><span class="pct">' + pct + '%</span></li>';
+    }).join("");
+  }
+
+  function drawWeekly(d) {
+    kill("weekly");
+    var el = $("#chart-weekly");
+    if (!isShown(el)) return;
+    var day = selected("#f-dayofweek");
+    var rgb = css("--accent-rgb");
+    charts.weekly = new Chart(el.getContext("2d"), {
+      type: "bar",
+      data: { labels: d.weekly_labels, datasets: [{ data: d.weekly_values,
+        backgroundColor: d.weekly_labels.map(function (_, i) { return i === day ? css("--accent") : "rgba(" + rgb + ", 0.3)"; }),
+        borderRadius: 6, maxBarThickness: 44 }] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: Object.assign(tooltipStyle(), { callbacks: { label: function (c) { return c.parsed.y.toFixed(3) + " kWh / 10 min"; } } }) },
+        scales: baseScales() }
+    });
+  }
+
+  function drawCompare(d) {
+    kill("compare");
+    var el = $("#chart-compare");
+    if (!isShown(el)) return;
+    charts.compare = new Chart(el.getContext("2d"), {
+      type: "bar",
+      data: { labels: ["Predicted", "Typical for this hour"], datasets: [{ data: [d.predicted, d.baseline],
+        backgroundColor: [css("--accent"), css("--blue")], borderRadius: 6, maxBarThickness: 64 }] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: Object.assign(tooltipStyle(), { callbacks: { label: function (c) { return c.parsed.y.toFixed(3) + " kWh / 10 min"; } } }) },
+        scales: baseScales() }
+    });
+  }
+
+  function drawFeatures() {
+    kill("features");
+    var el = $("#chart-features");
+    if (!isShown(el)) return;
+    var rgb = css("--accent-rgb");
+    charts.features = new Chart(el.getContext("2d"), {
+      type: "bar",
+      data: { labels: FEATURES.map(function (f) { return f.feature; }),
+        datasets: [{ data: FEATURES.map(function (f) { return f.importance; }),
+          backgroundColor: FEATURES.map(function (_, i) { return i < 3 ? css("--accent") : "rgba(" + rgb + ", 0.35)"; }),
+          borderRadius: 5, barThickness: 14 }] },
+      options: { indexAxis: "y", responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: Object.assign(tooltipStyle(), { callbacks: { label: function (c) { return (c.parsed.x * 100).toFixed(1) + "% importance"; } } }) },
+        scales: { x: { beginAtZero: true, grid: { color: css("--line") }, border: { display: false },
+                       ticks: { color: css("--muted"), callback: function (v) { return Math.round(v * 100) + "%"; } } },
+                  y: { grid: { display: false }, border: { display: false }, ticks: { color: css("--text") } } } }
+    });
+  }
+
+  function drawCharts() {
+    if (!hasChart) return;
+    setChartDefaults();
+    if (currentView === "model") { drawFeatures(); return; }
+    if (!last) return;
+    if (currentView === "overview") { drawForecast(last); drawDonut(last); }
+    if (currentView === "analytics") { drawWeekly(last); drawCompare(last); }
+  }
+
+  /* ---------- Render numbers ---------- */
+  function render(d) {
+    last = d;
+    var sc = statusClass(d.status);
+    var sign = d.above_baseline >= 0 ? "+" : "";
+
+    $("#k-pred").textContent = d.predicted.toFixed(3);
+
+    var base = $("#k-base");
+    base.textContent = sign + d.above_baseline.toFixed(1) + "%";
+    base.className = "kpi-value " + sc;
+    $("#k-base-sub").textContent = "typical for this hour: " + d.baseline.toFixed(3) + " kWh";
+
+    $("#k-cost").textContent = fmtINR(d.monthly_cost);
+    $("#k-cost-sub").textContent = "illustrative tariff ₹" + d.tariff + "/kWh";
+
+    var alert = $("#k-alert");
+    alert.textContent = d.status;
+    alert.className = "kpi-value " + sc;
+    $("#k-alert-sub").textContent = "anomaly check: " + d.anomaly.toLowerCase();
+    $("#k-alert-chip").className = "chip " + chipClass(d.status);
+
+    $("#insight").textContent = d.recommendation;
+
+    var names = Object.keys(d.breakdown);
+    var total = names.reduce(function (a, n) { return a + d.breakdown[n]; }, 0);
+    var top = d.major_contributor;
+    $("#top-name").textContent = top;
+    var share = total ? Math.round(d.breakdown[top] / total * 100) : 0;
+    $("#top-sub").textContent = share + "% of predicted use, largest estimated contributor";
+    $("#top-bar").style.width = share + "%";
+
+    $("#cut-out").textContent = d.cut_pct + "%";
+    var rs = d.saving_rupees >= 10 ? fmtINR(d.saving_rupees) : "₹" + (d.saving_kwh * d.tariff).toFixed(2);
+    $("#save-rs").textContent = rs;
+    $("#save-kwh").textContent = "about " + d.saving_kwh + " kWh saved over 30 days";
+
+    $("#ins-base").textContent = sign + d.above_baseline.toFixed(1) + "%";
+    $("#ins-base").className = "kpi-value " + sc;
+    $("#ins-anom").textContent = d.anomaly;
+    $("#ins-anom").className = "kpi-value " + (d.anomaly === "Normal" ? "ok" : "bad");
+    $("#ins-save").textContent = rs + " / month";
+    $("#ins-save-note").textContent = "Cutting lighting energy by " + d.cut_pct + "% saves about " + d.saving_kwh + " kWh over 30 days.";
+    $("#ins-status").textContent = d.status;
+    $("#ins-status").className = "insight-title " + sc;
+    $("#ins-text").textContent = d.recommendation;
+
+    var diff = d.predicted - d.baseline;
+    $("#compare-note").textContent = "This scenario is " + Math.abs(diff).toFixed(3) + " kWh " +
+      (diff >= 0 ? "above" : "below") + " the typical " + hourLabel(selected("#f-hour")) + " reading.";
+
+    drawCharts();
+  }
+
+  /* ---------- API ---------- */
+  var form = $("#scenario"), runBtn = $("#run"), errBox = $("#error");
+
+  function showError(msg) { errBox.textContent = msg; errBox.hidden = !msg; }
+
+  function run() {
+    var payload = {};
+    new FormData(form).forEach(function (v, k) { payload[k] = v; });
+    payload.cut_pct = $("#cut").value;
+
+    runBtn.disabled = true;
+    runBtn.lastChild.textContent = "Running…";
+    showError("");
+
+    return fetch("/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(render)
+      .catch(function () {
+        showError("Couldn't get a prediction from the server. Check your connection and select Run prediction to try again.");
+      })
+      .then(function () {
+        runBtn.disabled = false;
+        runBtn.lastChild.textContent = "Run prediction";
+      });
+  }
+
+  form.addEventListener("submit", function (e) { e.preventDefault(); run(); });
+
+  var timer;
+  $("#cut").addEventListener("input", function () {
+    $("#cut-out").textContent = this.value + "%";
+    clearTimeout(timer);
+    timer = setTimeout(run, 250);
+  });
+
+  if (!hasChart) {
+    showError("Charts couldn't load. Check your internet connection and refresh the page.");
+  }
+
+  var resizeTimer;
+  window.addEventListener("resize", function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(drawCharts, 200);
+  });
+
+  run();
+})();
 </script>
 </body>
 </html>
