@@ -1,0 +1,51 @@
+/* EcoWatt - "My Home" tab. Uses the theme tokens from style.css, so it follows dark and light themes. */
+
+.mh-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+.mh-row { padding: 14px 0; border-top: 1px solid var(--line); }
+.mh-row:first-child { border-top: 0; padding-top: 4px; }
+.mh-row-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.mh-row-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.mh-name { font-weight: 600; }
+.mh-cost { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mh-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.mh-note { margin-top: 8px; color: var(--muted); font-size: 12px; }
+
+.mh-add {
+  display: grid;
+  grid-template-columns: 2fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 6px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.btn.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.btn.ghost:hover { color: var(--text); filter: none; border-color: rgba(var(--accent-rgb), 0.5); }
+.btn.small { height: 30px; padding: 0 12px; font-size: 12px; font-weight: 500; }
+
+.mh-donut-wrap { position: relative; width: 176px; height: 176px; margin: 4px auto 0; }
+.mh-donut { width: 100%; height: 100%; border-radius: 50%; background: var(--card-2); }
+.mh-hole {
+  position: absolute;
+  inset: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--card);
+  text-align: center;
+}
+.mh-hole strong { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.mh-hole span { color: var(--muted); font-size: 11px; }
+
+.mh-msg { margin-top: 10px; color: var(--muted); font-size: 12.5px; min-height: 1em; }
+.mh-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+@media (max-width: 560px) {
+  .mh-add { grid-template-columns: 1fr 1fr; }
+  .mh-add .btn { grid-column: 1 / -1; }
+  .mh-fields { gap: 8px; }
+}
