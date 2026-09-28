@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='myhome.css') }}">
   <script>
     // Apply the saved theme before first paint (dark by default).
     try {
@@ -50,7 +51,8 @@
     </div>
 
     <nav class="nav" role="tablist" aria-label="Sections" id="nav">
-      <button role="tab" data-view="overview" aria-selected="true"><svg class="icon"><use href="#i-home"/></svg>Overview</button>
+      <button role="tab" data-view="myhome" aria-selected="true"><svg class="icon"><use href="#i-bulb"/></svg>My Home</button>
+      <button role="tab" data-view="overview" aria-selected="false"><svg class="icon"><use href="#i-home"/></svg>Overview</button>
       <button role="tab" data-view="analytics" aria-selected="false"><svg class="icon"><use href="#i-bars"/></svg>Analytics</button>
       <button role="tab" data-view="insights" aria-selected="false"><svg class="icon"><use href="#i-spark"/></svg>AI Insights</button>
       <button role="tab" data-view="model" aria-selected="false"><svg class="icon"><use href="#i-cpu"/></svg>Model</button>
@@ -93,8 +95,110 @@
 
       <div id="error" class="error" role="alert" hidden></div>
 
+      <!-- ================= MY HOME ================= -->
+      <section id="view-myhome" class="view" style="display:grid;gap:18px">
+
+        <div class="grid-kpi" aria-live="polite">
+          <div class="card kpi">
+            <span class="chip purple">₹</span>
+            <div class="kpi-body">
+              <div class="kpi-label">Estimated bill</div>
+              <div class="kpi-value" id="mh-k-cost">₹0</div>
+              <div class="kpi-sub">per month</div>
+            </div>
+          </div>
+          <div class="card kpi">
+            <span class="chip green"><svg class="icon"><use href="#i-bolt"/></svg></span>
+            <div class="kpi-body">
+              <div class="kpi-label">Units used</div>
+              <div class="kpi-value"><span id="mh-k-kwh">0</span> <small>kWh</small></div>
+              <div class="kpi-sub">per month</div>
+            </div>
+          </div>
+          <div class="card kpi">
+            <span class="chip blue"><svg class="icon"><use href="#i-cal"/></svg></span>
+            <div class="kpi-body">
+              <div class="kpi-label">Every day</div>
+              <div class="kpi-value"><span id="mh-k-day">0</span> <small>kWh</small></div>
+              <div class="kpi-sub">on average</div>
+            </div>
+          </div>
+          <div class="card kpi">
+            <span class="chip amber"><svg class="icon"><use href="#i-trend"/></svg></span>
+            <div class="kpi-body">
+              <div class="kpi-label">Biggest cost</div>
+              <div class="kpi-value" id="mh-k-top" style="font-size:18px">-</div>
+              <div class="kpi-sub" id="mh-k-top-sub">add hours to see</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2><svg class="icon"><use href="#i-bulb"/></svg>Your appliances</h2>
+            <span class="hint">Change the hours and your bill updates</span>
+          </div>
+          <div class="mh-two" style="margin-bottom:10px">
+            <div class="field">
+              <label for="mh-tariff">Electricity rate (₹ per unit)</label>
+              <input id="mh-tariff" type="number" min="0" step="0.1" inputmode="decimal">
+            </div>
+            <div class="field">
+              <label for="mh-bill">Last month's bill (₹, optional)</label>
+              <input id="mh-bill" type="number" min="0" step="1" inputmode="numeric" placeholder="e.g. 1800">
+            </div>
+          </div>
+          <div id="mh-rows"></div>
+          <div class="mh-add">
+            <div class="field">
+              <label for="mh-newname">Add another appliance</label>
+              <input id="mh-newname" type="text" placeholder="e.g. Study lamp">
+            </div>
+            <div class="field">
+              <label for="mh-newwatts">Watts</label>
+              <input id="mh-newwatts" type="number" min="1" inputmode="numeric" placeholder="20">
+            </div>
+            <button type="button" class="btn" id="mh-add">Add</button>
+          </div>
+          <p class="mh-msg" id="mh-addmsg" role="status"></p>
+        </div>
+
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h2><svg class="icon"><use href="#i-bolt"/></svg>Where your money goes</h2>
+            </div>
+            <div class="mh-donut-wrap">
+              <div class="mh-donut" id="mh-donut" role="img" aria-label="Share of monthly cost by appliance"></div>
+              <div class="mh-hole"><strong id="mh-hole-cost">₹0</strong><span>per month</span></div>
+            </div>
+            <ul class="legend" id="mh-legend"></ul>
+          </div>
+
+          <div style="display:grid;gap:14px;align-content:start">
+            <div class="card">
+              <div class="card-head"><h2><svg class="icon"><use href="#i-leaf"/></svg>Where you can save</h2></div>
+              <p class="insight-text" id="mh-tip">Set the hours for your appliances to see a saving tip.</p>
+            </div>
+            <div class="card">
+              <div class="card-head"><h2><svg class="icon"><use href="#i-bulb"/></svg>Check against your bill</h2></div>
+              <p class="insight-text" id="mh-billmsg">Enter last month's bill above to see how close this estimate is.</p>
+            </div>
+            <div class="card">
+              <div class="mh-actions">
+                <button type="button" class="btn" id="mh-copy">Copy my result</button>
+                <button type="button" class="btn ghost" id="mh-reset">Reset</button>
+              </div>
+              <p class="mh-msg" id="mh-copymsg" role="status">Send it to friends on WhatsApp so they can check theirs.</p>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint">Estimates use typical watts for each appliance. For exact numbers, check the watts printed on the appliance label.</p>
+      </section>
+
       <!-- ================= OVERVIEW ================= -->
-      <section id="view-overview" class="view" style="display:grid;gap:18px">
+      <section id="view-overview" class="view" hidden style="gap:18px">
 
         <div class="pitch">
           <div>
@@ -348,7 +452,7 @@
 
   var charts = {};
   var last = null;
-  var currentView = "overview";
+  var currentView = "myhome";
   var hasChart = typeof Chart !== "undefined";
 
   /* ---------- Date chip ---------- */
@@ -659,5 +763,6 @@
   run();
 })();
 </script>
+<script src="{{ url_for('static', filename='myhome.js') }}" defer></script>
 </body>
 </html>
