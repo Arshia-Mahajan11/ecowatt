@@ -1,4 +1,7 @@
 # EcoWatt AI — Real Data Edition (V4, Competition Ready)
+   ![EcoWatt](static/ecowatt-icon.png)
+
+   Live app: https://ecowatt.floot.app
 
 A machine-learning energy intelligence dashboard trained on **real, public**
 appliance-energy measurements (UCI *Appliances Energy Prediction* dataset —
